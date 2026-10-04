@@ -1,0 +1,493 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#064e3b">
+  <title>CvSU Tasks | DCIT 26 Laboratory 2</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; scroll-behavior: smooth; }
+    body { margin: 0; font-family: Arial, sans-serif; }
+    button, input { font: inherit; }
+    button { transition: .15s ease; }
+    button:active { transform: scale(.97); }
+    button:focus-visible, input:focus-visible, a:focus-visible {
+      outline: 3px solid #34d399;
+      outline-offset: 3px;
+    }
+    .green-pattern {
+      background-image: radial-gradient(#05966915 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .task-card { transition: background .2s, border-color .2s; }
+    .task-card:hover { border-color: #6ee7b7; }
+    .filter-active { background: #065f46; color: white; }
+    .filter-inactive { background: #ecfdf5; color: #065f46; }
+    .filter-inactive:hover { background: #d1fae5; }
+  </style>
+</head>
+
+<body class="bg-white text-slate-900">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function TaskItem({ task, onToggle, onDelete }) {
+      return (
+        <article className={`task-card flex items-start gap-3 rounded-2xl border p-4 ${
+          task.done
+            ? "border-emerald-100 bg-emerald-50/70"
+            : "border-slate-200 bg-white"
+        }`}>
+          <button
+            onClick={() => onToggle(task.id)}
+            aria-label={task.done ? "Mark task as not done" : "Mark task as done"}
+            aria-pressed={task.done}
+            className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+              task.done
+                ? "border-emerald-600 bg-emerald-600 text-white"
+                : "border-slate-300 bg-white hover:border-emerald-500"
+            }`}
+          >
+            {task.done && <span className="text-sm font-bold">✓</span>}
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <p className={`break-words font-medium ${
+              task.done ? "text-slate-400 line-through" : "text-slate-800"
+            }`}>
+              {task.text}
+            </p>
+            <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+              task.done
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-amber-100 text-amber-800"
+            }`}>
+              {task.done ? "✓ Done" : "◷ Not Done"}
+            </span>
+          </div>
+
+          <button
+            onClick={() => onDelete(task.id)}
+            aria-label={`Delete ${task.text}`}
+            className="shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+          >
+            <span aria-hidden="true">✕</span>
+            <span className="ml-1 hidden sm:inline">Delete</span>
+          </button>
+        </article>
+      );
+    }
+
+    function TodoApp() {
+      const [tasks, setTasks] = useState([]);
+      const [input, setInput] = useState("");
+      const [filter, setFilter] = useState("all");
+      const [message, setMessage] = useState("");
+
+      function addTask(event) {
+        event.preventDefault();
+        const text = input.trim();
+
+        if (!text) {
+          setMessage("Please enter a task before adding.");
+          return;
+        }
+
+        setTasks(current => [
+          ...current,
+          {
+            id: Date.now() + Math.random(),
+            text,
+            done: false
+          }
+        ]);
+
+        setInput("");
+        setMessage("Task added successfully!");
+      }
+
+      function toggleTask(id) {
+        setTasks(current =>
+          current.map(task =>
+            task.id === id
+              ? { ...task, done: !task.done }
+              : task
+          )
+        );
+        setMessage("");
+      }
+
+      function deleteTask(id) {
+        setTasks(current => current.filter(task => task.id !== id));
+        setMessage("Task deleted.");
+      }
+
+      function clearCompleted() {
+        setTasks(current => current.filter(task => !task.done));
+        setMessage("Completed tasks cleared.");
+      }
+
+      const completed = tasks.filter(task => task.done).length;
+      const pending = tasks.length - completed;
+      const progress = tasks.length
+        ? Math.round((completed / tasks.length) * 100)
+        : 0;
+
+      const visibleTasks = tasks.filter(task => {
+        if (filter === "done") return task.done;
+        if (filter === "pending") return !task.done;
+        return true;
+      });
+
+      useEffect(() => {
+        function handleKey(event) {
+          if (event.key === "Escape") {
+            setInput("");
+            setMessage("");
+          }
+        }
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
+      }, []);
+
+      return (
+        <div className="min-h-screen">
+          {/* Navigation */}
+          <header className="sticky top-0 z-20 bg-[#043c2d] text-white shadow-lg">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
+              <a href="#home" className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-2xl font-bold">
+                  ✓
+                </div>
+                <div>
+                  <div className="text-xl font-extrabold">
+                    CvSU <span className="text-emerald-400">Tasks</span>
+                  </div>
+                  <div className="text-xs text-emerald-100/75">
+                    DCIT 26 · Laboratory 2
+                  </div>
+                </div>
+              </a>
+
+              <nav className="hidden items-center gap-6 text-sm sm:flex">
+                <a href="#home" className="hover:text-emerald-300">Home</a>
+                <a href="#tasks" className="hover:text-emerald-300">My Tasks</a>
+                <a href="#guide" className="hover:text-emerald-300">User Guide</a>
+                <a href="#about" className="hover:text-emerald-300">About CvSU</a>
+              </nav>
+
+              <a href="#tasks" className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold hover:bg-emerald-400 sm:hidden">
+                My Tasks
+              </a>
+            </div>
+          </header>
+
+          <main>
+            {/* Hero */}
+            <section id="home" className="green-pattern bg-gradient-to-br from-emerald-50 via-white to-green-100">
+              <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:py-16 lg:grid-cols-2 lg:gap-16 lg:py-20">
+                <div>
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-800">
+                    Stay organized · Stay productive
+                  </span>
+
+                  <h1 className="mt-7 text-4xl font-extrabold leading-tight tracking-tight text-emerald-950 sm:text-6xl">
+                    Plan your day.
+                    <span className="block text-emerald-600">
+                      Get things done.
+                    </span>
+                  </h1>
+
+                  <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
+                    Manage your daily activities with a simple, clean, and
+                    interactive to-do list built with React and Tailwind CSS.
+                  </p>
+
+                  <a href="#tasks" className="mt-8 inline-flex items-center gap-3 rounded-full bg-emerald-700 px-6 py-3.5 font-bold text-white shadow-lg shadow-emerald-900/15 hover:bg-emerald-600">
+                    + Create a Task <span>→</span>
+                  </a>
+
+                  <div className="mt-10 grid grid-cols-3 gap-3 sm:gap-5">
+                    <div>
+                      <div className="mb-2 text-3xl font-extrabold text-emerald-700">01</div>
+                      <h3 className="text-sm font-bold">Add Tasks</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Organize your day</p>
+                    </div>
+                    <div>
+                      <div className="mb-2 text-3xl font-extrabold text-emerald-700">02</div>
+                      <h3 className="text-sm font-bold">Track Progress</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Mark tasks complete</p>
+                    </div>
+                    <div>
+                      <div className="mb-2 text-3xl font-extrabold text-emerald-700">03</div>
+                      <h3 className="text-sm font-bold">Stay Focused</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">See what's remaining</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Task Dashboard */}
+                <section id="tasks" className="scroll-mt-24 rounded-3xl border border-emerald-900/10 bg-white p-5 shadow-2xl shadow-emerald-950/10 sm:p-7">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-700">YOUR WORKSPACE</p>
+                      <h2 className="mt-1 text-2xl font-extrabold text-slate-900">My Tasks</h2>
+                      <p className="mt-1 text-sm text-slate-500">One step at a time.</p>
+                    </div>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-3xl text-emerald-700">
+                      ✓
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mt-6 rounded-2xl bg-emerald-50 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-emerald-950">Completion progress</span>
+                      <span className="text-sm font-extrabold text-emerald-700">{progress}%</span>
+                    </div>
+                    <div
+                      className="mt-3 h-2.5 overflow-hidden rounded-full bg-emerald-100"
+                      role="progressbar"
+                      aria-valuenow={progress}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-label="Task completion progress"
+                    >
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-xl bg-white p-3">
+                        <div className="text-xl font-extrabold text-slate-900">{tasks.length}</div>
+                        <div className="text-xs text-slate-500">Total</div>
+                      </div>
+                      <div className="rounded-xl bg-white p-3">
+                        <div className="text-xl font-extrabold text-amber-600">{pending}</div>
+                        <div className="text-xs text-slate-500">Not Done</div>
+                      </div>
+                      <div className="rounded-xl bg-white p-3">
+                        <div className="text-xl font-extrabold text-emerald-600">{completed}</div>
+                        <div className="text-xs text-slate-500">Done</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add Task Form */}
+                  <form onSubmit={addTask} className="mt-6">
+                    <label htmlFor="taskInput" className="mb-2 block text-sm font-bold text-slate-700">
+                      Add a new task
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="taskInput"
+                        type="text"
+                        maxLength="200"
+                        value={input}
+                        onChange={event => {
+                          setInput(event.target.value);
+                          setMessage("");
+                        }}
+                        placeholder="e.g. Finish my assignment..."
+                        className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:bg-white"
+                      />
+                      <button
+                        type="submit"
+                        className="shrink-0 rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white hover:bg-emerald-600"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    <p aria-live="polite" className="mt-2 min-h-4 text-xs text-emerald-700">
+                      {message}
+                    </p>
+                  </form>
+
+                  {/* Filters */}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        ["all", "All"],
+                        ["pending", "Not Done"],
+                        ["done", "Done"]
+                      ].map(([value, label]) => (
+                        <button
+                          key={value}
+                          onClick={() => setFilter(value)}
+                          aria-pressed={filter === value}
+                          className={`rounded-full px-3 py-2 text-xs font-bold ${
+                            filter === value ? "filter-active" : "filter-inactive"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {completed > 0 && (
+                      <button
+                        onClick={clearCompleted}
+                        className="text-xs font-semibold text-rose-600 hover:text-rose-800"
+                      >
+                        Clear completed
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Task List */}
+                  <div className="mt-4 space-y-3">
+                    {visibleTasks.length === 0 ? (
+                      <div className="rounded-2xl border-2 border-dashed border-emerald-100 px-4 py-10 text-center">
+                        <div className="text-4xl text-emerald-300">☑</div>
+                        <h3 className="mt-3 font-bold text-slate-700">
+                          {tasks.length === 0
+                            ? "No tasks yet"
+                            : "No tasks in this category"}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                          {tasks.length === 0
+                            ? "Add your first task using the form above."
+                            : "Choose another filter to see your tasks."}
+                        </p>
+                      </div>
+                    ) : (
+                      visibleTasks.map(task => (
+                        <TaskItem
+                          key={task.id}
+                          task={task}
+                          onToggle={toggleTask}
+                          onDelete={deleteTask}
+                        />
+                      ))
+                    )}
+                  </div>
+
+                  <p className="mt-5 text-center text-xs text-slate-400">
+                    Your tasks update instantly as you make changes.
+                  </p>
+                </section>
+              </div>
+            </section>
+
+            {/* User Guide */}
+            <section id="guide" className="scroll-mt-24 px-5 py-14 sm:py-16">
+              <div className="mx-auto max-w-7xl">
+                <p className="text-sm font-bold uppercase tracking-widest text-emerald-700">How it works</p>
+                <h2 className="mt-2 text-3xl font-extrabold text-slate-900 sm:text-4xl">User Guide</h2>
+                <p className="mt-3 text-slate-600">Follow these simple steps to manage your tasks.</p>
+
+                <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <article className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl font-bold text-emerald-800">01</div>
+                    <h3 className="mt-4 text-lg font-bold">Add a Task</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Enter a task in the text box and click <b>+ Add</b>. You can also press Enter to add it.
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl font-bold text-emerald-800">02</div>
+                    <h3 className="mt-4 text-lg font-bold">Mark Done or Not Done</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Click the circle beside a task to mark it Done. Click it again to change it back to Not Done.
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl font-bold text-emerald-800">03</div>
+                    <h3 className="mt-4 text-lg font-bold">Delete a Task</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Click Delete beside a task to remove it from the list. Use Clear completed to remove all completed tasks.
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl font-bold text-emerald-800">04</div>
+                    <h3 className="mt-4 text-lg font-bold">Filter Your Tasks</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Select All, Not Done, or Done to display only the tasks you want to see.
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl font-bold text-emerald-800">05</div>
+                    <h3 className="mt-4 text-lg font-bold">Track Progress</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      The task counters and progress bar automatically update whenever you add, complete, or delete tasks.
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl font-bold text-emerald-800">06</div>
+                    <h3 className="mt-4 text-lg font-bold">React Interactivity</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      React useState stores the tasks and form values. Event handlers update the interface without reloading the page.
+                    </p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            {/* CvSU Vision and Mission */}
+            <section id="about" className="scroll-mt-24 bg-gradient-to-br from-[#043c2d] to-[#08734b] px-5 py-14 text-white sm:py-16">
+              <div className="mx-auto max-w-7xl">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-400/15 text-3xl text-emerald-300">✦</div>
+                  <div>
+                    <h2 className="text-2xl font-extrabold sm:text-3xl">Cavite State University</h2>
+                    <p className="mt-2 text-sm text-emerald-200">Excellence · Character · Service</p>
+                  </div>
+                </div>
+
+                <div className="mt-8 grid gap-5 md:grid-cols-2">
+                  <article className="rounded-2xl border border-emerald-300/40 bg-white/5 p-6 sm:p-7">
+                    <h3 className="mb-4 text-xl font-bold text-emerald-300">CvSU Vision</h3>
+                    <p className="text-sm leading-7 text-emerald-50 sm:text-base">
+                      The premier university in historic Cavite globally recognized for excellence in character development, academics, research, innovation and sustainable community engagement.
+                    </p>
+                  </article>
+
+                  <article className="rounded-2xl border border-emerald-300/40 bg-white/5 p-6 sm:p-7">
+                    <h3 className="mb-4 text-xl font-bold text-emerald-300">CvSU Mission</h3>
+                    <p className="text-sm leading-7 text-emerald-50 sm:text-base">
+                      Cavite State University shall provide excellent, equitable, and relevant educational opportunities in the arts, sciences, and technology through quality instruction and responsive research and development activities. It shall produce professional, skilled, and morally upright individuals for global competitiveness.
+                    </p>
+                  </article>
+                </div>
+
+                <div className="mt-8 rounded-2xl bg-black/10 p-5">
+                  <p className="font-bold">DCIT 26: Application Development and Emerging Technologies</p>
+                  <p className="mt-2 text-sm text-emerald-100">Laboratory 2 — First Semester, SY 2026–2027</p>
+                </div>
+              </div>
+            </section>
+          </main>
+
+          <footer className="bg-[#032c22] px-5 py-6 text-emerald-100">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-bold text-white">CvSU Tasks</p>
+                <p className="mt-1 text-xs text-emerald-100/70">Created for educational purposes.</p>
+              </div>
+              <a href="#home" className="text-sm font-semibold text-emerald-300 hover:text-white">Back to top ↑</a>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<TodoApp />);
+  </script>
+</body>
+</html>
